@@ -18,13 +18,13 @@
 	-------------
  
 
-	This example code is in the public domain.
+	This example code is in the public domain.						
 */
 
 // Variables will never change:
-const byte buttonPin[] = {12};				// pins used by the buttons
+const byte buttonPin[] = {52,48,46};				// pins used by the buttons
 const int NUMBUTTONS = sizeof(buttonPin);	// This handy macro lets us determine how big the array up above is, by checking the size
-const byte ledPin[NUMBUTTONS] = {4};		// pins used by the status leds
+const byte ledPin[NUMBUTTONS] = {50,NULL,NULL};		// pins used by the status leds use NULL if no status LED is present
 const int debounceDelay = 50;				// the debounce time; increase if the output flickers
 
 
@@ -38,7 +38,19 @@ int blinkState[NUMBUTTONS];					// the current state of the blinking
 int blinkInterval = 250;					// determines the time (milliseconds) the LED is ON and OFF during blinking if set to 0 the LED stops blinking and -1 will disable the LED.
 
 void setup() {
+Serial.begin(9600);
+	pinMode(53,OUTPUT);
+	digitalWrite(53,LOW);
+
+	pinMode(51,OUTPUT);
+	digitalWrite(51,LOW);
+
 	Buttons_Begin();
+
+	// the buildin LED is used to illustrate for example a relay that is switched ON or OFF using the button
+	pinMode(13,OUTPUT);
+
+	
 }
 
 void loop() {
@@ -54,57 +66,41 @@ void Buttons_Begin() {
 		// activate the internal pullup
 		digitalWrite(buttonPin[i], HIGH);
 
-		// set the ledpin as output
-		pinMode(ledPin[i], OUTPUT);
+		// no LED connected
+		if (ledPin[i] != NULL) {
+			// set the ledpin as output
+			pinMode(ledPin[i], OUTPUT);
 
-		// set initial LED state
-		digitalWrite(ledPin[i], ledState[i]);
+			// set initial LED state
+			digitalWrite(ledPin[i], ledState[i]);
 
-		blinkState[i] = ledState[i];
+			blinkState[i] = ledState[i];
+		}
+		
 	}
 }
 
-void Buttons_Read() {
-	for (int i=0;i<NUMBUTTONS;i++) {
-		// read the state of the switch into a local variable:
-		int reading = digitalRead(buttonPin[i]);
+void Buttons_OnRelease(int button) {
+	Serial.print("button ");Serial.print(button);Serial.println(" is released");
+	switch (button) {
+    case 0:
+		//do something when var equals 0
+		break;
+	}
+}
 
-		// check to see if you just pressed the button
-		// (i.e. the input went from LOW to HIGH),  and you've waited
-		// long enough since the last press to ignore any noise:  
-
-		// If the switch changed, due to noise or pressing:
-		if (reading != lastButtonState[i]) {
-			// reset the debouncing timer
-			lastDebounceTime[i] = millis();
-		}
- 
-		if ((millis() - lastDebounceTime[i]) > debounceDelay) {
-			// whatever the reading is at, it's been there for longer
-			// than the debounce delay, so take it as the actual current state:
-
-			// if the button state has changed:
-			if (reading != buttonState[i]) {
-				buttonState[i] = reading;
-
-				// only toggle the LED if the new button state is HIGH
-				if (buttonState[i] == HIGH) {
-					ledState[i] = !ledState[i];
-				}
-			}
-		}
- 
-		// set the LED:
-		Buttons_SetLED(i, blinkInterval);
-
-		// save the reading.  Next time through the loop,
-		// it'll be the lastButtonState:
-		lastButtonState[i] = reading;
+void Buttons_OnPress(int button) {
+	Serial.print("button ");Serial.print(button);Serial.println(" is pressed");
+	switch (button) {
+    case 0:
+		//do something when var equals 0
+		digitalWrite(13,ledState[0]);
+		break;
 	}
 }
 
 void Buttons_SetLED(int button, int interval) {	
-	if (ledState[button] == HIGH) {
+	if (ledState[button] == HIGH && ledPin[button] != NULL) {
 		// if the ledState is HIGH the LED starts blinking with the set interval
 
 		if (interval < 0) {
@@ -140,4 +136,53 @@ void Buttons_SetLED(int button, int interval) {
 		blinkState[button] = LOW;
 	}
 }
+
+void Buttons_Read() {
+	for (int i=0;i<NUMBUTTONS;i++) {
+		// read the state of the switch into a local variable:
+		int reading = digitalRead(buttonPin[i]);
+
+		// check to see if you just pressed the button
+		// (i.e. the input went from LOW to HIGH),  and you've waited
+		// long enough since the last press to ignore any noise:  
+
+		// If the switch changed, due to noise or pressing:
+		if (reading != lastButtonState[i]) {
+			// reset the debouncing timer
+			lastDebounceTime[i] = millis();
+		}
+ 
+		if ((millis() - lastDebounceTime[i]) > debounceDelay) {
+			// whatever the reading is at, it's been there for longer
+			// than the debounce delay, so take it as the actual current state:
+
+			// if the button state has changed:
+			if (reading != buttonState[i]) {
+				buttonState[i] = reading;
+
+				if (buttonState[i] == HIGH) {
+					Buttons_OnRelease(i);
+				}
+				else {
+					Buttons_OnPress(i);
+				}
+
+				// only toggle the LED if the new button state is HIGH
+				if (buttonState[i] == HIGH) {
+					ledState[i] = !ledState[i];
+				}
+			}
+		}
+ 
+		// set the LED:
+		Buttons_SetLED(i, blinkInterval);
+
+		// save the reading.  Next time through the loop,
+		// it'll be the lastButtonState:
+		lastButtonState[i] = reading;
+	}
+}
+
+
+
 
